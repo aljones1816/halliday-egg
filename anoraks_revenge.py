@@ -42,7 +42,7 @@ class InputInterpreter:
 
         # Compile a valid command based on the given logic
         if action == "move" and direction:
-            return {"type": "move", "direction": direction}
+            return {"type": "move", "direction": direction, "error": None}
         elif direction and not action:
             return {"type": "move", "direction": direction, "error": None}
         elif action in ["take", "drop", "place", "open", "examine"] and obj:
@@ -73,17 +73,8 @@ class Room:
         self.items.remove(item)
 
 class Player:
-    def __init__(self, start_location):
+    def __init__(self):
         self.inventory = []
-        self.location = start_location
-
-    def move(self, direction):
-        new_location = self.location.get_exit(direction)
-        if new_location:
-            self.location = new_location
-            return self.location
-        else:
-            return None
         
     def take(self, item):
         if item in self.location.items:
@@ -101,45 +92,8 @@ class Player:
         else:
             return None
     
-    def examine(self, item):
-        if item in self.location.items:
-            return item.get_description()
-        elif item in self.inventory:
-            return item.get_description()
-        else:
-            return None
-        
-    def open(self, item):
-        if item in self.location.items:
-            return item.open()
-        else:
-            return None
-    
-    def place(self, item):
-        if item in self.inventory:
-            return item.place()
-        else:
-            return None
-        
-    def open_exit(self, direction):
-        exit = self.location.get_exit(direction)
-        if exit:
-            return exit.open()
-        else:
-            return None
-        
-    def close_exit(self, direction):
-        exit = self.location.get_exit(direction)
-        if exit:
-            return exit.close()
-        else:
-            return None
-    
     def get_inventory(self):
         return self.inventory
-    
-    def get_location(self):
-        return self.location
     
 class Item:
     def __init__(self, name, description, inventory={}):
@@ -173,23 +127,55 @@ class Exit:
         self.open = False
     
 
-def main():
-    interpreter = InputInterpreter()
-    player = Player()
-    leaflet = Item("leaflet", "A leaflet.")
-    mailbox = Item("mailbox", "A small mailbox.", [leaflet])
-    egg = Item("egg", "A jewel encrusted egg.")
-    trophyCase = Item("trophy case", "A trophy case.")
-    room1 = Room("West of House", "You are standing in an open field west of a white house, with a boarded front door.", [mailbox])
-    room2 = Room("North of House", "You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.")
-    room3 = Room("Behind House", "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.")
-    room4 = Room("Kitchen", "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. To the east is a small window which is open.")
-    room5 = Room("Living Room", "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.", [trophyCase,egg])
-    room6 = Room("South of House", "You are facing the south side of a white house. There is no door here, and all the windows are boarded up.")
-    
-    exit1 = Exit("north", room2)
-    
+# game class should render itself
+# while game not ended await input
+# game class has game ended
+# dictionary of locations so can do O(1) lookup
+# for any location need an array of exits
+# then game state will update
+# rerender
+# wait for input
+# player location should be in game state not player
+# game.render will call print(current_location.description)
+#YAGNI follow this principle You Ain't Gonna Need It
+# think of interfaces - a weapon interface and anything that implements a weapon interface has an attack function
+# e.g. consumable interface, e.g. drink potion or destroy door
+# exits can implement openable interface
 
+class Game:
+    def __init__(self):
+        self.interpreter = InputInterpreter()
+        self.player = Player("West of House")
+        self.leaflet = Item("leaflet", "A leaflet.")
+        self.mailbox = Item("mailbox", "A small mailbox.", [self.leaflet])
+        self.egg = Item("egg", "A jewel encrusted egg.")
+        self.trophyCase = Item("trophy case", "A trophy case.")
+        self.room1 = Room("West of House", "You are standing in an open field west of a white house, with a boarded front door.", [self.mailbox])
+        self.room2 = Room("North of House", "You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.")
+        self.room3 = Room("Behind House", "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.")
+        self.room4 = Room("Kitchen", "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. To the east is a small window which is open.")
+        self.room5 = Room("Living Room", "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.", [self.trophyCase,self.egg])
+        self.room6 = Room("South of House", "You are facing the south side of a white house. There is no door here, and all the windows are boarded up.")
+        self.room1.set_exit("north", self.room2)
+        self.room2.set_exit("south", self.room1)
+        self.room2.set_exit("north", self.room3)
+        self.room3.set_exit("south", self.room2)
+        self.room3.set_exit("east", self.room4)
+        self.room4.set_exit("west", self.room3)
+        self.room4.set_exit("north", self.room5)
+        self.room5.set_exit("south", self.room4)
+        self.room5.set_exit("east", self.room6)
+        self.room6.set_exit("west", self.room5)
+        self.current_location
+
+    def render(self):
+        print(self.current_location.description)
+        print("Items: ", self.current_location.items)
+        print("Exits: ", self.current_location.exits.keys())
+        print("Inventory: ", self.player.inventory)
+
+def main():
+    
     
     print("Ready Player One")
     input("Press enter to start...")
