@@ -50,83 +50,6 @@ class InputInterpreter:
         else:
             return {"error": "Invalid command"}
 
-class Room:
-    def __init__(self, name, description, items):
-        self.name = name
-        self.description = description
-        self.items = items
-        self.exits = {}
-
-    def __str__(self):
-        return self.description
-    
-    def set_exit(self, direction, room):
-        self.exits[direction] = room
-    
-    def get_exit(self, direction):
-        return self.exits.get(direction)
-    
-    def add_item(self, item):
-        self.items.append(item)
-
-    def remove_item(self, item):
-        self.items.remove(item)
-
-class Player:
-    def __init__(self):
-        self.inventory = []
-        
-    def take(self, item):
-        if item in self.location.items:
-            self.location.items.remove(item)
-            self.inventory.append(item)
-            return item
-        else:
-            return None
-        
-    def drop(self, item):
-        if item in self.inventory:
-            self.inventory.remove(item)
-            self.location.items.append(item)
-            return item
-        else:
-            return None
-    
-    def get_inventory(self):
-        return self.inventory
-    
-class Item:
-    def __init__(self, name, description, inventory={}):
-        self.name = name
-        self.description = description
-        self.inventory = inventory
-    
-    def __str__(self):
-        return self.name
-    
-    def get_description(self):
-        return self.description
-    
-    def open(self):
-        return None
-    
-    def add_item(self, item):
-        self.inventory.append(item)
-
-    def remove_item(self, item):
-        self.inventory.remove(item)
-
-class Exit:
-    def __init__(self, open=False):
-        self.open = open
-    
-    def open(self):
-        self.open = True
-
-    def close(self):
-        self.open = False
-    
-
 # game class should render itself
 # while game not ended await input
 # game class has game ended
@@ -143,39 +66,106 @@ class Exit:
 # exits can implement openable interface
 
 class Game:
-    def __init__(self):
-        self.interpreter = InputInterpreter()
-        self.player = Player("West of House")
-        self.leaflet = Item("leaflet", "A leaflet.")
-        self.mailbox = Item("mailbox", "A small mailbox.", [self.leaflet])
-        self.egg = Item("egg", "A jewel encrusted egg.")
-        self.trophyCase = Item("trophy case", "A trophy case.")
-        self.room1 = Room("West of House", "You are standing in an open field west of a white house, with a boarded front door.", [self.mailbox])
-        self.room2 = Room("North of House", "You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.")
-        self.room3 = Room("Behind House", "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.")
-        self.room4 = Room("Kitchen", "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. To the east is a small window which is open.")
-        self.room5 = Room("Living Room", "You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.", [self.trophyCase,self.egg])
-        self.room6 = Room("South of House", "You are facing the south side of a white house. There is no door here, and all the windows are boarded up.")
-        self.room1.set_exit("north", self.room2)
-        self.room2.set_exit("south", self.room1)
-        self.room2.set_exit("north", self.room3)
-        self.room3.set_exit("south", self.room2)
-        self.room3.set_exit("east", self.room4)
-        self.room4.set_exit("west", self.room3)
-        self.room4.set_exit("north", self.room5)
-        self.room5.set_exit("south", self.room4)
-        self.room5.set_exit("east", self.room6)
-        self.room6.set_exit("west", self.room5)
-        self.current_location
+    def __init__(self, rooms):
+        self.rooms = rooms
+        self.player = Player()
+        self.current_room = rooms["West of House"]
+        self.input_interpreter = InputInterpreter()
+        self.game_ended = False
 
     def render(self):
-        print(self.current_location.description)
-        print("Items: ", self.current_location.items)
-        print("Exits: ", self.current_location.exits.keys())
-        print("Inventory: ", self.player.inventory)
+        print(self.current_room.description)
+
+    def update_game_ended(self):
+        self.game_ended = not self.game_ended
+        print("Game Over")
+
+    def move(self, direction):
+        for exit in self.current_room.exits:
+            if exit.direction == direction:
+                if exit.is_open:
+                    self.current_room = self.rooms[exit.destination]
+                    return
+                else:
+                    print("That way is closed")
+                    return
+        print("You can't go that way")
+
+class Room:
+    def __init__(self, description, exits, inventory = []):
+        self.description = description
+        self.exits = exits
+        self.inventory = inventory
+    
+    def add_item(self, item):
+        self.inventory.append(item)
+
+    def remove_item(self, item):
+        self.inventory.remove(item)
+
+
+class Exit():
+    def __init__(self, direction, destination, is_open=True):
+        self.direction = direction
+        self.destination = destination
+        self.is_open = is_open
+    
+    def open(self):
+        self.is_open = True
+        print("You open the door")
+
+    def close(self):
+        self.is_open = False
+        print("You close the door")
+
+class Window(Exit):
+    def open(self):
+        self.is_open = True
+        print("With great effort, you open the window far enough to allow entry")
+
+    def close(self):
+        self.is_open = False
+        print("You close the window")
+
+class Player:
+    def __init__(self, inventory = []):
+        self.inventory = inventory
+
+    def add_item(self, item):
+        self.inventory.append(item)
+    
+    def remove_item(self, item):
+        self.inventory.remove(item)
+    
 
 def main():
     
+    rooms = {
+        "West of House": Room("You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here", [
+            Exit("north", "North of House")
+        ]),
+        "North of House": Room("You are facing the north side of a white house. There is no door here, and all the windows are boarded up. To the north a narrow path winds through the trees.", [
+            Exit("west", "West of House"),
+            Exit("east", "Behind House")
+        ]),
+        "Behind House": Room("You are behind the white house. A path leads into the forest to the east. In one corner of the house there is a small window which is slightly ajar.", [
+            Exit("north", "North of House"),
+            Exit("south", "South of House"),
+            Window("east", "Kitchen", is_open=False)
+        ]),
+        "South of House": Room("You are facing the south side of a white house. There is a wooden door here. To the east there is a small window which is slightly ajar.", [
+            Exit("west", "West of House"),
+            Exit("east", "Behind House")
+        ]),
+        "Kitchen": Room("You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food. A passage leads to the west and a dark staircase can be seen leading upward. To the east is a small window which is open.", [
+            Exit("east", "Behind House"),
+            Exit("west", "Living Room")
+        ]),
+        "Living Room": Room("You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, and a large oriental rug in the center of the room.", [
+            Exit("east", "Kitchen")
+        ]),
+    }
+    game = Game(rooms)
     
     print("Ready Player One")
     input("Press enter to start...")
@@ -187,15 +177,29 @@ def main():
     print("Revision 88 / Serial number 840726")
     print("\n")
     print("West of House")
-    print("You are standing in an open field west of a white house, with a boarded front door.")
-    print("There is a small mailbox here.")
-    while True:
-        playerInput = input("> ")
-        command = interpreter.interpret(playerInput)
+    
+    while not game.game_ended:
+        game.render()
+        user_input = input(">")
+        command = game.input_interpreter.interpret(user_input)
         if command["error"]:
-            print("I don't understand that command.")
+            print(command["error"])
+        elif command["type"] == "move":
+            game.move(command["direction"])
+        elif command["type"] == "take":
+            print("You take the " + command["object"])
+        elif command["type"] == "drop":
+            print("You drop the " + command["object"])
+        elif command["type"] == "place":
+            print("You place the " + command["object"])
+        elif command["type"] == "open":
+            print("You open the " + command["object"])
+        elif command["type"] == "examine":
+            print("You examine the " + command["object"])
         else:
-            print(command)
+            print("Invalid command")
+        game.update_game_ended()
+        
 
 if __name__ == "__main__":
     main()
