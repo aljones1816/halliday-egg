@@ -27,7 +27,8 @@ class InputInterpreter:
             "open": "open", "close": "close",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
             "talk": "speak", "speak": "speak","greet":"speak",
-            "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack"
+            "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack",
+            "blow": "blow whistle","use": "blow whistle","blow whistle": "blow whistle","whistle": "blow whistle","sound": "blow whistle"
         }
         self.direction_map = {
             "north": "north", "n": "north",
@@ -55,7 +56,14 @@ class InputInterpreter:
             "self": "self",
             "me": "self",
             "player": "self",
-            "myself": "self"
+            "myself": "self",
+            "cereal": "cereal",
+            "box": "cereal",
+            "capn crunch": "cereal",
+            "capn": "cereal",
+            "crunch": "cereal",
+            "whistle": "whistle",
+            "blow whistle": "whistle"
         }  
 
     def interpret(self, user_input):
@@ -90,6 +98,8 @@ class InputInterpreter:
             return {"type": action, "object": None, "error": None}
         elif action in ["place"] and obj and recipient:
             return {"type": action, "object": obj, "recipient": recipient, "error": None}
+        elif action == "blow whistle":
+            return {"type": action, "object": "whistle", "error": None}
         else:
             return {"error": "Invalid command"}
 
@@ -102,6 +112,7 @@ class Game:
         self.current_room_name = "West of House"
         self.input_interpreter = InputInterpreter()
         self.game_ended = False
+        self.whistle_blown = False
         self.render()
     
         while not self.game_ended:
@@ -109,13 +120,13 @@ class Game:
             self.handle_input(user_input)
             # if trophy case in living room contains leaflet and egg, game ends
             trophy_case_inventory = self.rooms["Living Room"].get_item_by_name("case").inventory
-            if len(trophy_case_inventory) == 2:
-                self.update_game_ended()
-                
-            
+            for item in trophy_case_inventory:
+                if item.name == "egg" and self.whistle_blown:
+                    self.game_ended = True
+
         # victory scroll
         typewriter_effect("----------------------------------------------------", delay=0.05)
-        typewriter_effect("As you place the second trophy into the trophy case, a glow begins to emanate from inside.",delay=0.05)
+        typewriter_effect("As you place the jeweled egg into the trophy case, a glow begins to emanate from inside.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
         typewriter_effect("Behind you, Anorak appears in a whirl of smoke and a clap of thunder.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
@@ -180,6 +191,8 @@ class Game:
             self.speak(command["object"])
         elif command["type"] == "attack":
             self.attack(command["object"])
+        elif command["type"] == "blow whistle":
+            self.blow_whistle()
         else:
             print("I don't understand that command. Alan didn't program me good.")
 
@@ -207,11 +220,16 @@ class Game:
         print("You can't go that way")
 
     def take_item(self, item_name):
+        for item in self.player.inventory:
+            if item.name == item_name:
+                print(f"You already have the {item_name}")
+                return
         item = self.current_room.get_item_by_name(item_name)
+
         if item and item.moveable:
             self.current_room.remove_item(item)
             self.player.inventory.append(item)
-            print(f"you take {item_name}.")
+            print(f"you take the {item_name}.")
             return
         elif item and not item.moveable:
             print(f"You can't take that.")
@@ -224,7 +242,7 @@ class Game:
                     if item:
                         room_item.remove_item(item)
                         self.player.inventory.append(item)
-                        print(f"You take {item_name} from {room_item.name}")
+                        print(f"You take the {item_name} from the {room_item.name}")
                         return
                     
         print(f"{item_name} is not in the room")
@@ -265,11 +283,12 @@ class Game:
                 print(f"You open the {item_name}")
                 # if the item has anything in its inventory, list it
                 if item.inventory:
-                    print(f"Inside the {item_name} you find:")
+                    print(f"Inside the {item_name} you see:")
                     for item in item.inventory:
                         print(f" - a {item.name}")
                 return
             print(f"The {item_name} is already open")
+            return
         elif item and not item.is_openable:
             print(f"You can't do that")
             return
@@ -292,6 +311,7 @@ class Game:
                 print(f"You close the {item_name}")
                 return
             print(f"The {item_name} is already closed")
+            return
         elif item and not item.is_openable:
             print(f"You can't do that")
             return
@@ -339,7 +359,7 @@ class Game:
     def examine(self, item_name):
         if item_name is not None:
             if item_name == "self":
-                print("You are Claire, a gunter on a quest to find the easter egg in ZORK! and save the OASIS.")
+                print("You are Claire, a gunter on a quest to find Halliday's key hidden in ZORK! and save the OASIS.")
                 print("In your inventory you have:")
                 for item in self.player.inventory:
                     print(f" - a {item.name}")
@@ -361,6 +381,15 @@ class Game:
         else:
             print(self.current_room.description)
             return
+        
+    def blow_whistle(self):
+        whistle = self.player.get_item_by_name("whistle")
+        if whistle:
+            whistle.blow()
+            self.whistle_blown = True
+            return
+        print("You don't have a whistle to blow.")
+        return
 
 class Room:
     def __init__(self, initial_description, visited_description, exits, inventory = [], visited = False):
@@ -428,6 +457,20 @@ class Item:
     def attack(self):
         print("You attack visciously but miss, falling over and hitting your head in the process.")
 
+class Whistle(Item):
+    def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
+        super().__init__(name, description,inventory, moveable, closed, is_openable)
+        self.blown = False
+
+    def blow(self):
+        if not self.blown:
+            print("You blow the whistle and hear a faint echo in the distance.")
+            self.blown = True
+            return
+        else:
+            print("You blow the whistle again, but nothing else happens.")
+            return
+
 class Anorak(Item):
     def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
         super().__init__(name, description,inventory, moveable, closed, is_openable)
@@ -489,11 +532,13 @@ class Player:
 
 def main():
     anorak = Anorak("anorak","A tall wizard in black robes who looks like an older, more handomse version of James Halliday, creator of the OASIS.")
-    leaflet = Item("leaflet", "Scrawled in cursive on the leaflet are the words:\n'WELCOME TO ZORK!\nI don't seem to do much right now, but maybe you should take me with you,\n there might be someplace to put me later!'")
+    leaflet = Item("leaflet", "Scrawled in cursive on the leaflet are the words:\n'WELCOME TO ZORK!\nI don't seem to do much, but you can take me with you if you want.'")
     mailbox = Item("mailbox", "A nice mailbox, it looks like you can open it.", [leaflet], False, True, True)
     jewel_encrusted_egg = Item("egg", "A beautiful egg with jewels encrusting the shell.\nIt looks like it would fit perfectly in a trophy case")
+    whistle = Whistle("whistle", "A small plastic blow whistle, it looks like it might make a sound if you blow it.")
+    capn_crunch = Item("cereal", "A box of Capn' Crunch Cereal, the breakfast of champions.", [whistle], False, True, True)
 
-    trophy_case = Item("case", "A glass case with several trophies and other items inside.\nThere are two dust-free patches where it looks like some items have gone missing from...",[], False, True, True)
+    trophy_case = Item("case", "A glass case with several trophies and other items inside.\nThere is a dust-free patch where it looks like an item might have gone missing from...",[], False, True, True)
     rooms = {
         "West of House": Room(
             "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nA figure dressed in dark wizard's robes leans casually against the mailbox and beckons you over.\nYou can walk around the house to the north or south.",
@@ -526,12 +571,13 @@ def main():
             Exit("west","Kitchen",True,"window")
         ]),
         "Kitchen": Room(
-            "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nA passage leads to the west and to the east is a small window which is open.",
-             "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nA passage leads to the west and to the east is a small window which is open.",
+            "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\n\nA passage leads to the west and to the east is a small window which is open.",
+             "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\nA passage leads to the west and to the east is a small window which is open.",
               [
             Exit("west", "Living Room",False),
             Exit("east","Behind House",False,"window")
-        ]
+        ],
+        [capn_crunch]
         ),
         "Living Room": Room(
             "You are in the living room. There is a doorway to the east, and a trophy case in the corner of the room.\nA shiny, jewel encrusted egg sits on the floor.",
