@@ -244,10 +244,13 @@ class Game:
         item = self.player.get_item_by_name(item_name)
         if item:
             for room_item in self.current_room.inventory:
-                if room_item.name == recipient:
+                if room_item.name == recipient and not room_item.closed:
                     self.player.remove_item(item)
                     room_item.inventory.append(item)
                     print(f"You place the {item_name} into the {recipient}")
+                    return
+                elif room_item.name == recipient and room_item.closed:
+                    print(f"You can't do that, the {recipient} is closed.")
                     return
                 print(f"There isn't a {recipient} in this room.")
                 return
