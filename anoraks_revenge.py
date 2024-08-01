@@ -18,6 +18,7 @@ class InputInterpreter:
             "place": "place", "put": "place", "set": "place", "install": "place",
             "open": "open", "close": "close",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
+            "talk": "speak", "speak": "speak","greet":"speak"
         }
         self.direction_map = {
             "north": "north", "n": "north",
@@ -31,7 +32,13 @@ class InputInterpreter:
             "egg": "egg",
             "jewel encrusted egg": "egg",
             "leaflet": "leaflet",
-            "paper": "leaflet"
+            "paper": "leaflet",
+            "window": "window",
+            "wall": "wall",
+            "man": "anorak",
+            "wizard": "anorak",
+            "old man": "anorak",
+            "anorak": "anorak"
         }  
 
     def interpret(self, user_input):
@@ -49,18 +56,16 @@ class InputInterpreter:
             elif word in self.direction_map and direction is None:
                 direction = self.direction_map[word]
             elif word in self.object_map and obj is None:
-                obj = word
+                obj = self.object_map[word]
             elif word in self.object_map and obj is not None:
-                recipient = word
-
-        print(action, direction, obj, recipient)
+                recipient = self.object_map[word]
 
         # Compile a valid command based on the given logic
         if action == "move" and direction:
             return {"type": "move", "direction": direction, "error": None}
         elif direction and not action:
             return {"type": "move", "direction": direction, "error": None}
-        elif action in ["take", "drop", "open", "examine"] and obj:
+        elif action in ["take", "drop", "open", "examine", "close","speak"] and obj:
             return {"type": action, "object": obj, "error": None}
         elif action in ["place"] and obj and recipient:
             return {"type": action, "object": obj, "recipient": recipient, "error": None}
@@ -75,6 +80,7 @@ class Game:
         self.current_room = rooms["West of House"]
         self.input_interpreter = InputInterpreter()
         self.game_ended = False
+        self.render()
 
         while not self.game_ended:
             user_input = input(">")
@@ -134,8 +140,12 @@ class Game:
             self.place_item_in(command["object"],command["recipient"])
         elif command["type"] == "open":
             self.open(command["object"])
+        elif command["type"] == "close":
+            self.close(command["object"])
         elif command["type"] == "examine":
             self.examine(command["object"])
+        elif command["type"] == "speak":
+            self.speak(command["object"])
         else:
             print("I don't understand that command. Alan didn't program me good.")
 
@@ -149,7 +159,7 @@ class Game:
     def move(self, direction):
         for exit in self.current_room.exits:
             if exit.direction == direction:
-                if exit.is_open:
+                if not exit.closed:
                     self.current_room = self.rooms[exit.destination]
                     if not self.current_room.visited:
                         self.current_room.visited = True
@@ -163,11 +173,13 @@ class Game:
 
     def take_item(self, item_name):
         item = self.current_room.get_item_by_name(item_name)
-        if item:
+        if item and item.is_moveable:
             self.current_room.remove_item(item)
             self.player.inventory.append(item)
             print(f"you take {item_name}.")
             return
+        elif item and not item.is_moveable:
+            print(f"You can't take that.")
     
         else: 
             for room_item in self.current_room.inventory:
@@ -213,13 +225,58 @@ class Game:
                 item.open()
                 print(f"You open the {item_name}")
                 return
-            print(f"{item_name} is already open")
+            print(f"The {item_name} is already open")
         elif item and not item.is_openable:
-            print(f"you can't open {item_name}")
+            print(f"You can't do that")
+            return
 
-        # TODO: handle case where opening exit instead of item
+        else:
+            for exit in self.current_room.exits:
+                if exit.gate == item_name:
+                    if exit.closed:
+                            exit.open()
+                            return
+                    print(f"{item_name} is already open")
+                    return
+        print(f"There is nothing to open by that name in the current room.")
+
+    def close(self,item_name):
+        item = self.current_room.get_item_by_name(item_name)
+        if item and item.is_openable:
+            if not item.closed:
+                item.close()
+                print(f"You close the {item_name}")
+                return
+            print(f"The {item_name} is already closed")
+        elif item and not item.is_openable:
+            print(f"You can't do that")
+            return
+
+        else:
+            for exit in self.current_room.exits:
+                if exit.gate == item_name:
+                    if not exit.closed:
+                            exit.close()
+                            return
+                    print(f"{item_name} is already closed")
+                    return
+        print(f"There is nothing to close by that name in the current room.")
     
-    # TODO: add method to talk to human subclass (Anorak) - need to update parser
+    def speak(self, item_name):
+        item = self.current_room.get_item_by_name(item_name)
+        if item :
+            item.speak()
+            return
+        else: 
+            for room_item in self.current_room.inventory:
+                if not room_item.closed:
+                    item = room_item.get_item_by_name(item_name)
+                    if item:
+                        item.speak()
+                        return
+                    
+        print(f"{item_name} is not in the room, you're speaking to air.")
+
     # TODO: add method to examine - case for item and case for room and case for self (inventory)
 
 class Room:
@@ -253,9 +310,6 @@ class Item:
     def __init__(self, name, description,inventory=[], moveable=True, closed=False, is_openable=False):
         self.name = name
         self.description = description
-        self.actions = {
-            "describe": self.get_description
-        }
         self.moveable = moveable
         self.inventory = inventory
         self.closed = closed
@@ -285,20 +339,70 @@ class Item:
     def close(self):
         self.closed=True
 
+    def speak(self):
+        print("Umm... this is an inanimate object, Claire.")
+    
+    def attack(self):
+        print("You attack visciously but miss, falling over and hitting your head in the process.")
 
+class Anorak(Item):
+    def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
+        super().__init__(name, description,inventory, moveable, closed, is_openable)
+        self.spoken = False
+        self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.
+        'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.
+        You look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.
+        You must be wondering why you're here, and why Wade lent you his OASIS account.
+        Well, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.
+        ZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world, solve puzzles, and have adventures.
+        In this version of ZORK!, I've modified the game and hidden a special easter egg inside for any gunter clever enough to find it.
+        I think you'll find the easter egg super helpful to the quest you're currently on, so get cracking!
+        You can come talk to me again if you need help understanding how to play the game.
+        Good luck!'
+        """
+        self.help_conversation = """
+        'Hah!' The wizard laughs. 
+        'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'
+        He looks more serious. 'Well, the clock is ticking, so here's some advice to help you:
+        To move around the game world, you can type in direction commands, like 'walk north' or 'go south.'
+        Sometimes there are doors or objects you want to get inside of that are shut, trying commanding them to 'open!' There's that mailbox nearby that might have something inside...
+        You can also pick up many items you find around in the environment - try i on the... thing you might find in the mailbox!
+
+        Hmph, well, that should be enough to get you going. Text adventure games are all about exploration and trying out different commands, so, get to experimenting!'
+        """
+        self.attack_conversation = """Your pitiful attack has no effect whatsoever on Anorak's mighty form.
+        He moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you, engulfing you and everything else around.
+        Anorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.
+        You get unsteadily to your feet and gulp down one of your dwindling health potions.
+        Anorak laughs, 'Hah! Best not be trying that again, little one!"""
+
+    def speak(self):
+        if not self.spoken:
+            print(self.initial_conversation)
+            self.spoken = True
+            return
+        else:
+            print(self.help_conversation)
+            return
+
+    def attack(self):
+        print(self.attack_conversation)
+        return
+            
 class Exit():
-    def __init__(self, direction, destination, is_open=True):
+    def __init__(self, direction, destination, closed=True, gate=None):
+        self.gate = gate
         self.direction = direction
         self.destination = destination
-        self.is_open = is_open
+        self.closed = closed
     
     def open(self):
-        self.is_open = True
-        print("You open the door")
+        self.closed = False
+        print(f"You open the {self.gate}")
 
     def close(self):
-        self.is_open = False
-        print("You close the door")
+        self.closed = True
+        print(f"You close the {self.gate}")
 
 
 class Player:
@@ -322,7 +426,7 @@ class Player:
     
 
 def main():
-    
+    anorak = Anorak("anorak","A tall wizard in black robes who looks like an older, more handomse version of James Halliday, creator of the OASIS.")
     leaflet = Item("leaflet", "Welcome to Zork!")
     mailbox = Item("mailbox", "A nice mailbox", [leaflet], False, True, True)
     rooms = {
@@ -330,21 +434,21 @@ def main():
             "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nA figure dressed in dark robes leans casually against the mailbox and beckons you over.",
             "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nAnorak leans casually against the mailbox.",
             [
-            Exit("north", "North of House"),
-            Exit("south", "South of House")
+            Exit("north", "North of House",True,"window"),
+            Exit("south", "South of House",False,"wall")
         ],
-        [mailbox]
+        [mailbox, anorak]
         ),
         "North of House": Room(
             "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.",
              "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.", [
-            Exit("west", "West of House")
+            Exit("west", "West of House",False)
         ]),
         "South of House": Room(
             "You are facing the south side of a white house.",
              "You are facing the south side of a white house.",
               [
-            Exit("west", "West of House"),
+            Exit("west", "West of House",False),
         ])
     }
     
