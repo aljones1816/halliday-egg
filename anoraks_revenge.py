@@ -126,7 +126,7 @@ class Game:
 
         # victory scroll
         typewriter_effect("----------------------------------------------------", delay=0.05)
-        typewriter_effect("As you place the jeweled egg into the trophy case, a glow begins to emanate from inside.",delay=0.05)
+        typewriter_effect("A glow begins to emanate from inside the trophy case. In the distance, a faint melody begins to play.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
         typewriter_effect("Behind you, Anorak appears in a whirl of smoke and a clap of thunder.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
