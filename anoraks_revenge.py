@@ -157,7 +157,7 @@ class Game:
             return
         if command["type"] == "move":
             if command["direction"] == "window":
-                if self.current_room.description == "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.":
+                if self.current_room.description == "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.\nYou can walk around the house to the north or south.":
                     self.move("west")
                     return
                 else:
