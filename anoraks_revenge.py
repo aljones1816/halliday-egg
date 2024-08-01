@@ -475,11 +475,12 @@ class Anorak(Item):
     def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
         super().__init__(name, description,inventory, moveable, closed, is_openable)
         self.spoken = False
+        self.attacks = 0
         self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.\n'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.\nYou look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.\n\nYou must be wondering why you're here, and why Wade lent you his OASIS account.\nWell, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.\nZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world,\nsolve puzzles, and have adventures.\nIn this version of ZORK!, I've modified the game and hidden a special prize inside for any gunter clever enough to find it.\nI think you'll find the easter egg super helpful to the quest you're currently on, so get cracking!\n\nYou can come talk to me again if you need help understanding how to play the game.\n\nGood luck!'
         """
         self.help_conversation = """\n'Hah!' The wizard laughs.\n'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'\n\nHe looks more serious. 'Well, the clock is ticking, so here's some advice to help you:\n\nTo move around the game world, you can type in direction commands, like 'walk north' or 'go south.'\n\nSometimes there are doors or objects you want to get inside of that are shut, trying commanding them to 'open!'\nThere's that mailbox nearby that might have something inside...\n\nYou can also pick up many items you find around in the environment - try picking up the... thing you might find in the mailbox!\n\n\nHmph, well, that should be enough to get you going.\nText adventure games are all about exploration and trying out different commands, so, get to experimenting!'
         """
-        self.attack_conversation = """Your pitiful attack glances off of Anorak's superior armor and has no effect.\nThe wizard moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you,\nengulfing you and everything else around.\n\nAnorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.\n\nYou get unsteadily to your feet and gulp down one of your dwindling health potions.\n\nAnorak laughs, 'Hah! Best not be trying that again, little one!"""
+        self.first_attack_conversation = """Your pitiful attack glances off of Anorak's superior armor and has no effect.\nThe wizard moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you,\nengulfing you and everything else around.\n\nAnorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.\n\nYou get unsteadily to your feet and gulp down one of your dwindling health potions.\n\nAnorak laughs, 'Hah! Best not be trying that again, little one!"""
 
     def speak(self):
         if not self.spoken:
@@ -491,7 +492,12 @@ class Anorak(Item):
             return
 
     def attack(self):
-        typewriter_effect(self.attack_conversation, delay=0.03)
+        self.attacks += 1
+        if self.attacks == 1:
+            typewriter_effect(self.first_attack_conversation, delay=0.03)
+            return
+        elif self.attacks > 1:
+            print("You've already tried attacking Anorak once, and it didn't go well. You decide to try something else.")
         return
             
 class Exit():
