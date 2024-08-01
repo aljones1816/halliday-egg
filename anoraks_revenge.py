@@ -1,5 +1,13 @@
 import time
 import sys
+import readline
+import os
+
+def clear_screen():
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
 
 def typewriter_effect(text, delay=0.1):
     for char in text:
@@ -12,13 +20,14 @@ class InputInterpreter:
     def __init__(self):
         # Define mappings for actions and directions
         self.action_map = {
-            "go": "move", "move": "move", "walk": "move", "run": "move",
+            "go": "move", "move": "move", "walk": "move", "run": "move","climb": "move","enter": "move","crawl": "move",
             "take": "take", "grab": "take", "pick up": "take", "hold": "take",
             "drop": "drop", "leave": "drop", "discard": "drop","put down": "drop","throw": "drop",
             "place": "place", "put": "place", "set": "place", "install": "place",
             "open": "open", "close": "close",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
-            "talk": "speak", "speak": "speak","greet":"speak"
+            "talk": "speak", "speak": "speak","greet":"speak",
+            "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack"
         }
         self.direction_map = {
             "north": "north", "n": "north",
@@ -34,11 +43,19 @@ class InputInterpreter:
             "leaflet": "leaflet",
             "paper": "leaflet",
             "window": "window",
-            "wall": "wall",
+            "trophy case": "case",
+            "case": "case",
+            "trophy": "case",
             "man": "anorak",
             "wizard": "anorak",
             "old man": "anorak",
-            "anorak": "anorak"
+            "anorak": "anorak",
+            "figure": "anorak",
+            "halliday": "anorak",
+            "self": "self",
+            "me": "self",
+            "player": "self",
+            "myself": "self"
         }  
 
     def interpret(self, user_input):
@@ -63,10 +80,14 @@ class InputInterpreter:
         # Compile a valid command based on the given logic
         if action == "move" and direction:
             return {"type": "move", "direction": direction, "error": None}
+        elif action == "move" and not direction and obj == "window":
+            return {"type": "move", "direction": "window", "error": None}
         elif direction and not action:
             return {"type": "move", "direction": direction, "error": None}
-        elif action in ["take", "drop", "open", "examine", "close","speak"] and obj:
+        elif action in ["take", "drop", "open", "examine", "close","speak", "attack"] and obj:
             return {"type": action, "object": obj, "error": None}
+        elif action in ["examine"] and not obj:
+            return {"type": action, "object": None, "error": None}
         elif action in ["place"] and obj and recipient:
             return {"type": action, "object": obj, "recipient": recipient, "error": None}
         else:
@@ -78,19 +99,23 @@ class Game:
         self.rooms = rooms
         self.player = Player()
         self.current_room = rooms["West of House"]
+        self.current_room_name = "West of House"
         self.input_interpreter = InputInterpreter()
         self.game_ended = False
         self.render()
-
+    
         while not self.game_ended:
             user_input = input(">")
             self.handle_input(user_input)
-            for item in self.player.inventory:
-                if item.name == "leaflet":
-                    self.update_game_ended()
+            # if trophy case in living room contains leaflet and egg, game ends
+            trophy_case_inventory = self.rooms["Living Room"].get_item_by_name("case").inventory
+            if len(trophy_case_inventory) == 2:
+                self.update_game_ended()
+                
+            
         # victory scroll
         typewriter_effect("----------------------------------------------------", delay=0.05)
-        typewriter_effect("You place the egg into the trophy case and a glow begins to emanate from inside.",delay=0.05)
+        typewriter_effect("As you place the second trophy into the trophy case, a glow begins to emanate from inside.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
         typewriter_effect("Behind you, Anorak appears in a whirl of smoke and a clap of thunder.",delay=0.05)
         typewriter_effect("\n", delay=0.08)
@@ -131,6 +156,13 @@ class Game:
             print("I don't understand that command. Alan didn't program me good.")
             return
         if command["type"] == "move":
+            if command["direction"] == "window":
+                if self.current_room.description == "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.":
+                    self.move("west")
+                    return
+                else:
+                    self.move("east")
+                    return
             self.move(command["direction"])
         elif command["type"] == "take":
             self.take_item(command["object"])
@@ -146,15 +178,17 @@ class Game:
             self.examine(command["object"])
         elif command["type"] == "speak":
             self.speak(command["object"])
+        elif command["type"] == "attack":
+            self.attack(command["object"])
         else:
             print("I don't understand that command. Alan didn't program me good.")
 
     def render(self):
+        print(self.current_room_name)
         print(self.current_room.description)
 
     def update_game_ended(self):
         self.game_ended = not self.game_ended
-        print("Game Over")
 
     def move(self, direction):
         for exit in self.current_room.exits:
@@ -164,6 +198,7 @@ class Game:
                     if not self.current_room.visited:
                         self.current_room.visited = True
                     self.current_room.update_description()
+                    self.current_room_name = exit.destination
                     self.render()
                     return
                 else:
@@ -173,13 +208,14 @@ class Game:
 
     def take_item(self, item_name):
         item = self.current_room.get_item_by_name(item_name)
-        if item and item.is_moveable:
+        if item and item.moveable:
             self.current_room.remove_item(item)
             self.player.inventory.append(item)
             print(f"you take {item_name}.")
             return
-        elif item and not item.is_moveable:
+        elif item and not item.moveable:
             print(f"You can't take that.")
+            return
     
         else: 
             for room_item in self.current_room.inventory:
@@ -224,6 +260,11 @@ class Game:
             if item.closed:
                 item.open()
                 print(f"You open the {item_name}")
+                # if the item has anything in its inventory, list it
+                if item.inventory:
+                    print(f"Inside the {item_name} you find:")
+                    for item in item.inventory:
+                        print(f" - a {item.name}")
                 return
             print(f"The {item_name} is already open")
         elif item and not item.is_openable:
@@ -277,7 +318,46 @@ class Game:
                     
         print(f"{item_name} is not in the room, you're speaking to air.")
 
-    # TODO: add method to examine - case for item and case for room and case for self (inventory)
+    def attack(self, item_name):
+        item = self.current_room.get_item_by_name(item_name)
+        if item :
+            item.attack()
+            return
+        else: 
+            for room_item in self.current_room.inventory:
+                if not room_item.closed:
+                    item = room_item.get_item_by_name(item_name)
+                    if item:
+                        item.attack()
+                        return
+                    
+        print(f"{item_name} is not in the room, you're attacking air.")
+
+    def examine(self, item_name):
+        if item_name is not None:
+            if item_name == "self":
+                print("You are Claire, a gunter on a quest to find the easter egg in ZORK! and save the OASIS.")
+                print("In your inventory you have:")
+                for item in self.player.inventory:
+                    print(f" - a {item.name}")
+                return
+            item = self.current_room.get_item_by_name(item_name)
+            if not item:
+                item = self.player.get_item_by_name(item_name)
+            if item:
+                print(item.get_description())
+                return
+            else:
+                for room_item in self.current_room.inventory:
+                    if not room_item.closed:
+                        item = room_item.get_item_by_name(item_name)
+                        if item:
+                            print(item.get_description())
+                            return
+
+        else:
+            print(self.current_room.description)
+            return
 
 class Room:
     def __init__(self, initial_description, visited_description, exits, inventory = [], visited = False):
@@ -349,44 +429,23 @@ class Anorak(Item):
     def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
         super().__init__(name, description,inventory, moveable, closed, is_openable)
         self.spoken = False
-        self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.
-        'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.
-        You look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.
-        You must be wondering why you're here, and why Wade lent you his OASIS account.
-        Well, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.
-        ZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world, solve puzzles, and have adventures.
-        In this version of ZORK!, I've modified the game and hidden a special easter egg inside for any gunter clever enough to find it.
-        I think you'll find the easter egg super helpful to the quest you're currently on, so get cracking!
-        You can come talk to me again if you need help understanding how to play the game.
-        Good luck!'
+        self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.\n'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.\nYou look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.\n\nYou must be wondering why you're here, and why Wade lent you his OASIS account.\nWell, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.\nZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world,\nsolve puzzles, and have adventures.\nIn this version of ZORK!, I've modified the game and hidden a special prize inside for any gunter clever enough to find it.\nI think you'll find the easter egg super helpful to the quest you're currently on, so get cracking!\n\nYou can come talk to me again if you need help understanding how to play the game.\n\nGood luck!'
         """
-        self.help_conversation = """
-        'Hah!' The wizard laughs. 
-        'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'
-        He looks more serious. 'Well, the clock is ticking, so here's some advice to help you:
-        To move around the game world, you can type in direction commands, like 'walk north' or 'go south.'
-        Sometimes there are doors or objects you want to get inside of that are shut, trying commanding them to 'open!' There's that mailbox nearby that might have something inside...
-        You can also pick up many items you find around in the environment - try i on the... thing you might find in the mailbox!
-
-        Hmph, well, that should be enough to get you going. Text adventure games are all about exploration and trying out different commands, so, get to experimenting!'
+        self.help_conversation = """\n'Hah!' The wizard laughs.\n'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'\n\nHe looks more serious. 'Well, the clock is ticking, so here's some advice to help you:\n\nTo move around the game world, you can type in direction commands, like 'walk north' or 'go south.'\n\nSometimes there are doors or objects you want to get inside of that are shut, trying commanding them to 'open!'\nThere's that mailbox nearby that might have something inside...\n\nYou can also pick up many items you find around in the environment - try picking up the... thing you might find in the mailbox!\n\n\nHmph, well, that should be enough to get you going.\nText adventure games are all about exploration and trying out different commands, so, get to experimenting!'
         """
-        self.attack_conversation = """Your pitiful attack has no effect whatsoever on Anorak's mighty form.
-        He moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you, engulfing you and everything else around.
-        Anorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.
-        You get unsteadily to your feet and gulp down one of your dwindling health potions.
-        Anorak laughs, 'Hah! Best not be trying that again, little one!"""
+        self.attack_conversation = """Your pitiful attack glances off of Anorak's superior armor and has no effect.\nThe wizard moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you,\nengulfing you and everything else around.\n\nAnorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.\n\nYou get unsteadily to your feet and gulp down one of your dwindling health potions.\n\nAnorak laughs, 'Hah! Best not be trying that again, little one!"""
 
     def speak(self):
         if not self.spoken:
-            print(self.initial_conversation)
+            typewriter_effect(self.initial_conversation, delay=0.03)
             self.spoken = True
             return
         else:
-            print(self.help_conversation)
+            typewriter_effect(self.help_conversation, delay=0.03)
             return
 
     def attack(self):
-        print(self.attack_conversation)
+        typewriter_effect(self.attack_conversation, delay=0.03)
         return
             
 class Exit():
@@ -427,34 +486,63 @@ class Player:
 
 def main():
     anorak = Anorak("anorak","A tall wizard in black robes who looks like an older, more handomse version of James Halliday, creator of the OASIS.")
-    leaflet = Item("leaflet", "Welcome to Zork!")
-    mailbox = Item("mailbox", "A nice mailbox", [leaflet], False, True, True)
+    leaflet = Item("leaflet", "Scrawled in cursive on the leaflet are the words:\n'WELCOME TO ZORK!\nI don't seem to do much right now, but maybe you should take me with you,\n there might be someplace to put me later!'")
+    mailbox = Item("mailbox", "A nice mailbox, it looks like you can open it.", [leaflet], False, True, True)
+    jewel_encrusted_egg = Item("egg", "A beautiful egg with jewels encrusting the shell.\nIt looks like it would fit perfectly in a trophy case")
+
+    trophy_case = Item("case", "A glass case with several trophies and other items inside.\nThere are two dust-free patches where it looks like some items have gone missing from...",[], False, True, True)
     rooms = {
         "West of House": Room(
-            "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nA figure dressed in dark robes leans casually against the mailbox and beckons you over.",
-            "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nAnorak leans casually against the mailbox.",
+            "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nA figure dressed in dark wizard's robes leans casually against the mailbox and beckons you over.\nYou can walk around the house to the north or south.",
+            "You are standing in an open field west of a white house, with a boarded front door.\nThere is a small mailbox here.\nAnorak leans casually against the mailbox.\nYou can walk around the house to the north or south.",
             [
-            Exit("north", "North of House",True,"window"),
-            Exit("south", "South of House",False,"wall")
+            Exit("north", "North of House",False),
+            Exit("south", "South of House",False)
         ],
         [mailbox, anorak]
         ),
         "North of House": Room(
-            "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.",
-             "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.", [
-            Exit("west", "West of House",False)
+            "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.\nThere is a path that leads around the house to the east and to the west.",
+             "You are facing the north side of a white house. There is no door here, and all the windows are boarded up.\nThere is a path that leads around the house to the east and to the west.", [
+            Exit("west", "West of House",False),
+            Exit("east","Behind House",False)
         ]),
         "South of House": Room(
-            "You are facing the south side of a white house.",
-             "You are facing the south side of a white house.",
+            "You are facing the south side of a white house.\nYou can walk around the house to the east or west.",
+             "You are facing the south side of a white house.\nYou can walk around the house to the east or west.",
               [
             Exit("west", "West of House",False),
-        ])
+            Exit("east","Behind House",False)
+        ]),
+        "Behind House": Room(
+            "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.\nYou can walk around the house to the north or south.",
+             "You are behind the white house. In one corner of the house there is a small window which is slightly ajar.\nYou can walk around the house to the north or south.",
+              [
+            Exit("south", "South of House",False),
+            Exit("north","North of House",False),
+            Exit("west","Kitchen",True,"window")
+        ]),
+        "Kitchen": Room(
+            "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nA passage leads to the west and to the east is a small window which is open.",
+             "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nA passage leads to the west and to the east is a small window which is open.",
+              [
+            Exit("west", "Living Room",False),
+            Exit("east","Behind House",False,"window")
+        ]
+        ),
+        "Living Room": Room(
+            "You are in the living room. There is a doorway to the east, and a trophy case in the corner of the room.\nA shiny, jewel encrusted egg sits on the floor.",
+             "You are in the living room. There is a doorway to the east, and a trophy case in the corner of the room.\nA shiny, jewel encrusted egg sits on the floor.",
+              [
+            Exit("east", "Kitchen",False)
+        ],
+        [trophy_case, jewel_encrusted_egg]
+        ),
     }
     
     
     print("Ready Player One")
-    input("Press enter to start...")
+    input("Press Return to start...")
 
     print("\n")
     print("ZORK I: The Great Underground Empire")
@@ -462,11 +550,11 @@ def main():
     print("ZORK is a registered trademark of Infocom, Inc.")
     print("Revision 88 / Serial number 840726")
     print("\n")
-    print("West of House")
     
     game = Game(rooms)
     
         
 
 if __name__ == "__main__":
+    clear_screen()
     main()
