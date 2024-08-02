@@ -2,6 +2,7 @@ import time
 import sys
 import readline
 import os
+import textwrap
 
 def clear_screen():
     if os.name == 'nt':
@@ -9,12 +10,17 @@ def clear_screen():
     else:
         os.system('clear')
 
-def typewriter_effect(text, delay=0.1):
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    print()  # Move to the next line after the text is printed
+def typewriter_effect(text, width=90, delay=0.1):
+    paragraphs = text.split('\n\n')
+    for paragraph in paragraphs:
+        wrapped_text = textwrap.fill(paragraph, width=width)
+        for line in wrapped_text.split('\n'):
+            for char in line:
+                sys.stdout.write(char)
+                sys.stdout.flush()
+                time.sleep(delay)
+            print()  
+        print()  
 
 class InputInterpreter:
     def __init__(self):
