@@ -34,7 +34,8 @@ class InputInterpreter:
             "use": "examine",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
             "talk": "speak", "speak": "speak","greet":"speak",
-            "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack",
+            "fuck": "fuck", "bang": "fuck", "make love": "fuck",
+            "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack", "assault":"attack",
             "blow": "blow whistle","blow whistle": "blow whistle","whistle": "blow whistle","sound": "blow whistle"
         }
         self.direction_map = {
@@ -107,6 +108,8 @@ class InputInterpreter:
             return {"type": action, "object": obj, "recipient": recipient, "error": None}
         elif action == "blow whistle":
             return {"type": action, "object": "whistle", "error": None}
+        elif action == "fuck" and obj:
+            return {"type": action, "object": obj, "error": None }
         else:
             return {"error": "Invalid command"}
 
@@ -200,6 +203,8 @@ class Game:
             self.attack(command["object"])
         elif command["type"] == "blow whistle":
             self.blow_whistle()
+        elif command["type"] == "fuck":
+            self.make_fuck(command["object"])
         else:
             print("I don't understand that command. Alan didn't program me good.")
 
@@ -396,6 +401,21 @@ class Game:
             self.whistle_blown = True
             return
         print("You don't have a whistle to blow.")
+        return
+    
+    def make_fuck(self,object):
+        item = self.current_room.get_item_by_name(object)
+        if item:
+            if item.name == "anorak":
+                print("Anorak liks that a lot.")
+                return
+            elif item.name == "self":
+                print("You furiously jack off in the corner.")
+                return
+            else:
+                print("Ummm... you... uh... fuck the inanimate object. It's ok.")
+                return
+        print("Do what?!")
         return
 
 class Room:
