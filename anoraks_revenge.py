@@ -31,10 +31,11 @@ class InputInterpreter:
             "drop": "drop", "leave": "drop", "discard": "drop","put down": "drop","throw": "drop",
             "place": "place", "put": "place", "set": "place", "install": "place",
             "open": "open", "close": "close",
+            "use": "examine",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
             "talk": "speak", "speak": "speak","greet":"speak",
             "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack",
-            "blow": "blow whistle","use": "blow whistle","blow whistle": "blow whistle","whistle": "blow whistle","sound": "blow whistle"
+            "blow": "blow whistle","blow whistle": "blow whistle","whistle": "blow whistle","sound": "blow whistle"
         }
         self.direction_map = {
             "north": "north", "n": "north",
