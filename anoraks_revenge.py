@@ -4,6 +4,7 @@ import readline
 import os
 import textwrap
 
+
 def clear_screen():
     if os.name == 'nt':
         os.system('cls')
@@ -34,7 +35,7 @@ class InputInterpreter:
             "use": "examine",
             "examine": "examine", "look": "examine", "inspect": "examine", "read": "examine",
             "talk": "speak", "speak": "speak","greet":"speak",
-            "fuck": "fuck", "bang": "fuck", "make love": "fuck",
+            "fuck": "fuck", "bang": "fuck", "make love": "fuck","sex": "fuck",
             "attack": "attack", "fight": "attack", "hit": "attack", "punch": "attack", "kill": "attack", "assault":"attack",
             "blow": "blow whistle","blow whistle": "blow whistle","whistle": "blow whistle","sound": "blow whistle"
         }
@@ -100,7 +101,7 @@ class InputInterpreter:
             return {"type": "move", "direction": "window", "error": None}
         elif direction and not action:
             return {"type": "move", "direction": direction, "error": None}
-        elif action in ["take", "drop", "open", "examine", "close","speak", "attack"] and obj:
+        elif action in ["take", "drop", "open", "examine", "close","speak", "attack","fuck"] and obj:
             return {"type": action, "object": obj, "error": None}
         elif action in ["examine"] and not obj:
             return {"type": action, "object": None, "error": None}
@@ -108,8 +109,6 @@ class InputInterpreter:
             return {"type": action, "object": obj, "recipient": recipient, "error": None}
         elif action == "blow whistle":
             return {"type": action, "object": "whistle", "error": None}
-        elif action == "fuck" and obj:
-            return {"type": action, "object": obj, "error": None }
         else:
             return {"error": "Invalid command"}
 
@@ -148,7 +147,7 @@ class Game:
         typewriter_effect("\n", delay=0.08)
         typewriter_effect("'Remember it well, and good luck on the rest of you quest! Farewell!'",delay=0.05)
         typewriter_effect("\n", delay=0.08)
-        typewriter_effect("Anorak's avatar fades into mist, which forms itself in letters reading: ",delay=0.05)
+        typewriter_effect("Anorak's avatar fades into mist, which forms itself into letters reading: ",delay=0.05)
         print("""
  __ __   ____  ____  ____  __ __      ____   ____  ____  ______  __ __  ___     ____  __ __ 
 |  |  | /    ||    \|    \|  |  |    |    \ |    ||    \|      ||  |  ||   \   /    ||  |  |
@@ -265,6 +264,7 @@ class Game:
             self.current_room.inventory.append(item)
             self.player.remove_item(item)
             print(f"you drop {item_name}.")
+            print(self.current_room.inventory)
             return
         else:
             print(f"You don't have that item.")
@@ -404,13 +404,13 @@ class Game:
         return
     
     def make_fuck(self,object):
+        if object == "self":
+                print("You furiously jack off in the corner.")
+                return
         item = self.current_room.get_item_by_name(object)
         if item:
             if item.name == "anorak":
-                print("Anorak liks that a lot.")
-                return
-            elif item.name == "self":
-                print("You furiously jack off in the corner.")
+                print("Anorak likes that a lot.")
                 return
             else:
                 print("Ummm... you... uh... fuck the inanimate object. It's ok.")
@@ -485,7 +485,7 @@ class Item:
         print("You attack visciously but miss, falling over and hitting your head in the process.")
 
 class Whistle(Item):
-    def __init__(self, name, description,inventory=[], moveable=False, closed=True, is_openable=False):
+    def __init__(self, name, description,inventory=[], moveable=True, closed=True, is_openable=False):
         super().__init__(name, description,inventory, moveable, closed, is_openable)
         self.blown = False
 
@@ -503,9 +503,9 @@ class Anorak(Item):
         super().__init__(name, description,inventory, moveable, closed, is_openable)
         self.spoken = False
         self.attacks = 0
-        self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.\n'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.\nYou look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.\n\nYou must be wondering why you're here, and why Wade lent you his OASIS account.\nWell, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.\nZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world,\nsolve puzzles, and have adventures.\nIn this version of ZORK!, I've modified the game and hidden a special prize inside for any gunter clever enough to find it.\nI think you'll find the easter egg super helpful to the quest you're currently on, so get cracking!\n\nYou can come talk to me again if you need help understanding how to play the game.\n\nGood luck!'
+        self.initial_conversation = """'Hey, kid!' The wizard says jovially, smiling in greeting.\n'The name's Halliday, James Halliday, although right now I'm more recognizeable as my avatar, Anorak the wizard.\nYou look just like Wade Watts' famous avatar, Parzival, although I know it's actually Claire behind that headset, not Wade.\n\nYou must be wondering why you're here, and why Wade lent you his OASIS account.\nWell, the fact is, before the real me passed away, he created a special version of the game ZORK!, right here in the OASIS.\nZORK! is a classic text-based video game, where players like you type commands into the prompt to explore the world,\nsolve puzzles, and have adventures.\nIn this version of ZORK!, I've modified the game and hidden a special prize inside for any gunter clever enough to find it.\nI think you'll find the prize super helpful to the quest you're currently on, so get cracking!\n\nYou can come talk to me again if you need help understanding how to play the game.\n\nGood luck!'
         """
-        self.help_conversation = """\n'Hah!' The wizard laughs.\n'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'\n\nHe looks more serious. 'Well, the clock is ticking, so here's some advice to help you:\n\nTo move around the game world, you can type in direction commands, like 'walk north' or 'go south.'\n\nSometimes there are doors or objects you want to get inside of that are shut, trying commanding them to 'open!'\nThere's that mailbox nearby that might have something inside...\n\nYou can also pick up many items you find around in the environment - try picking up the... thing you might find in the mailbox!\n\n\nHmph, well, that should be enough to get you going.\nText adventure games are all about exploration and trying out different commands, so, get to experimenting!'
+        self.help_conversation = """'Hah!' The wizard laughs.\n'I figured you'd be back for help sooner or later, I've devised a real doosy of a challenge, here.'\n\nHe looks more serious. 'Well, the clock is ticking, so here's some advice to help you:\n\nTo move around the game world, you can type in direction commands, like 'walk north' or 'go south.'\n\nSometimes there are doors or objects you want to get inside of that are shut, try 'open'-ing them!''\nThere's that mailbox nearby that might have something inside...\n\nYou can also pick up many items you find around in the environment - try picking up the... thing you might find in the mailbox!\n\nHmph, well, that should be enough to get you going.\nText adventure games are all about exploration and trying out different commands, so, get to experimenting!'
         """
         self.first_attack_conversation = """Your pitiful attack glances off of Anorak's superior armor and has no effect.\nThe wizard moves his hands in mysterious circular motions and a gigantic fireball swells into the space between you,\nengulfing you and everything else around.\n\nAnorak throws his hands wide and sends the fireball - and your avatar - spinning across the field, where you come crashing down in a pile, your health nearly gone.\n\nYou get unsteadily to your feet and gulp down one of your dwindling health potions.\n\nAnorak laughs, 'Hah! Best not be trying that again, little one!"""
 
@@ -604,8 +604,8 @@ def main():
             Exit("west","Kitchen",True,"window")
         ]),
         "Kitchen": Room(
-            "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\n\nA passage leads to the west and to the east is a small window which is open.",
-             "You are in the kitchen of the white house. A table seems to have been used recently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\nA passage leads to the west and to the east is a small window which is open.",
+            "You are in the kitchen of the white house. A table seems to have been used\nrecently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\n\nA passage leads to the west and to the east is a small window which is open.",
+             "You are in the kitchen of the white house. A table seems to have been used\nrecently for the preparation of food.\nOn the table sits a box of Capn' Crunch Cereal.\nA passage leads to the west and to the east is a small window which is open.",
               [
             Exit("west", "Living Room",False),
             Exit("east","Behind House",False,"window")
@@ -613,8 +613,8 @@ def main():
         [capn_crunch]
         ),
         "Living Room": Room(
-            "You are in the living room. There is a doorway to the east, and a trophy case in the corner of the room.\nA shiny, jewel encrusted egg sits on the floor.",
-             "You are in the living room. There is a doorway to the east, and a trophy case in the corner of the room.\nA shiny, jewel encrusted egg sits on the floor.",
+            "You are in the living room. There is a doorway to the east, and a trophy case in the corner\nof the room.\nA shiny, jewel encrusted egg sits on the floor.",
+             "You are in the living room. There is a doorway to the east, and a trophy case in the corner\nof the room.\nA shiny, jewel encrusted egg sits on the floor.",
               [
             Exit("east", "Kitchen",False)
         ],
