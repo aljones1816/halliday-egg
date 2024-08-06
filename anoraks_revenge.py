@@ -103,6 +103,8 @@ class InputInterpreter:
             return {"type": "move", "direction": direction, "error": None}
         elif action in ["take", "drop", "open", "examine", "close","speak", "attack","fuck"] and obj:
             return {"type": action, "object": obj, "error": None}
+        elif action == "speak" and not obj:
+            return {"type": action, "object": None, "error": None }
         elif action in ["examine"] and not obj:
             return {"type": action, "object": None, "error": None}
         elif action in ["place"] and obj and recipient:
@@ -197,7 +199,10 @@ class Game:
         elif command["type"] == "examine":
             self.examine(command["object"])
         elif command["type"] == "speak":
-            self.speak(command["object"])
+            if command["object"]:
+                self.speak(command["object"])
+            else:
+                self.speak("nobody")
         elif command["type"] == "attack":
             self.attack(command["object"])
         elif command["type"] == "blow whistle":
@@ -343,6 +348,9 @@ class Game:
         if item :
             item.speak()
             return
+        elif item_name == "nobody":
+            print("Not clear who you're trying to talk to.")
+            return
         else: 
             for room_item in self.current_room.inventory:
                 if not room_item.closed:
@@ -350,7 +358,7 @@ class Game:
                     if item:
                         item.speak()
                         return
-                    
+        
         print(f"{item_name} is not in the room, you're speaking to air.")
 
     def attack(self, item_name):
@@ -624,7 +632,7 @@ def main():
     
     
     print("Ready Player One")
-    input("Press Return to start...")
+    input("Press Enter to start...")
 
     print("\n")
     print("ZORK I: The Great Underground Empire")
